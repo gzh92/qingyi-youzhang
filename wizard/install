@@ -1,0 +1,26 @@
+[
+  {
+    "stepTitle": "安装说明",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "支持婚礼、满月、生日、乔迁、升学、白事等事由，也可自定义事由，自动汇总每位亲友的礼尚往来与待回礼金额。"
+      },
+      {
+        "type": "tips",
+        "helpText": "账本数据只保存在本机，不联网、不上传。应用经飞牛统一网关访问，复用 NAS 登录态，无需额外配置。"
+      },
+      {
+        "type": "switch",
+        "field": "wizard_ack",
+        "label": "我已了解，同意安装",
+        "rules": [
+          {
+            "required": true,
+            "message": "请先确认后继续安装"
+          }
+        ]
+      }
+    ]
+  }
+]

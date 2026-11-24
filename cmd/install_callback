@@ -1,0 +1,12 @@
+#!/bin/bash
+# 情谊有账 安装回调
+# 运行模型：统一网关 + Unix Socket（manifest 未声明 service_port，checkport=false）。
+# 后端监听 ${TRIM_APPDEST}/app.sock，由飞牛网关校验登录态后转发。
+# 本脚本仅校验「我已了解，同意安装」确认开关。
+
+if [ "${wizard_ack}" != "true" ]; then
+  echo "请先勾选「我已了解，同意安装」，确认后再继续安装" > "${TRIM_TEMP_LOGFILE:-/dev/stderr}"
+  exit 1
+fi
+
+exit 0

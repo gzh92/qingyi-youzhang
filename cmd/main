@@ -1,0 +1,184 @@
+#!/bin/bash
+# 情谊有账 · 生命周期管理（start / stop / status）
+# 退出码约定（飞牛平台契约）：
+#   start  成功 0 / 失败 1
+#   stop   成功 0（含"本就未运行"）
+#   status 运行中 0 / 未运行 3
+#   其他动作 1
+# 失败时把简短可执行的提示写入 $TRIM_TEMP_LOGFILE，并返回非零。
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+
+# ---------- 定位应用目录 ----------
+# 脚本位于 <pkg>/cmd/，应用文件在 TRIM_APPDEST。
+# 逐项探测（避免 /vol* 通配在引号外被展开成多个词），取第一个含后端二进制的目录。
+SELF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+APP_DIR=""
+for d in "${TRIM_APPDEST}" "${SELF_DIR}" "${SELF_DIR}/app"; do
+    if [ -n "${d}" ] && [ -x "${d}/server/qingyi-youzhang" ]; then
+        APP_DIR="${d}"
+        break
+    fi
+done
+# 兜底：在 /vol* 挂载点下探测应用中心目录
+if [ -z "${APP_DIR}" ]; then
+    for base in /vol*; do
+        [ -d "${base}" ] || continue
+        cand="${base}/@appcenter/qingyi-youzhang"
+        if [ -x "${cand}/server/qingyi-youzhang" ]; then
+            APP_DIR="${cand}"
+            break
+        fi
+    done
+fi
+[ -n "${APP_DIR}" ] || APP_DIR="${TRIM_APPDEST}"
+
+WWW="${APP_DIR}/www"
+[ -d "${WWW}" ] || WWW="${APP_DIR}/app/www"
+
+# 统一网关模式：监听 Unix Socket，请求经飞牛网关校验登录态后转发
+SOCKET="${TRIM_APPDEST}/app.sock"
+DATA_FILE="${TRIM_PKGHOME}/data.json"
+CMD="SOCKET=\"${SOCKET}\" GATEWAY_PREFIX=\"/app/qingyi-youzhang\" WWW=\"${WWW}\" DATA_FILE=\"${DATA_FILE}\" TRIM_DATA_SHARE_PATHS=\"${TRIM_DATA_SHARE_PATHS}\" \"${APP_DIR}/server/qingyi-youzhang\""
+
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
+}
+
+# 失败提示：写入平台约定的临时日志文件，用户在 UI 上能看到
+fail_msg() {
+    echo "情谊有账启动失败：$1 请查看日志 ${LOG_FILE}" > "${TRIM_TEMP_LOGFILE}" 2>/dev/null || true
+}
+
+# 进程存活判断
+check_process() {
+    local pid=$1
+    [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null
+}
+
+# 校验 PID 是否确属本应用（防 PID 复用误判：系统重启后 PID 可能被其他进程占用）
+is_our_process() {
+    local pid=$1
+    [ -n "${pid}" ] || return 1
+    check_process "${pid}" || return 1
+    # Linux 下可读取 /proc/<pid>/cmdline 校验命令行特征
+    if [ -r "/proc/${pid}/cmdline" ]; then
+        # cmdline 以 \0 分隔，先转成空格再匹配二进制名
+        if tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null | grep -q 'qingyi-youzhang'; then
+            return 0
+        fi
+        return 1
+    fi
+    # 无 /proc（非 Linux 环境）时退化为仅判断存活
+    return 0
+}
+
+status() {
+    if [ -r "${PID_FILE}" ]; then
+        local pid
+        pid=$(head -n 1 "${PID_FILE}" 2>/dev/null | tr -d '[:space:]')
+        if is_our_process "${pid}"; then
+            return 0
+        fi
+        # 陈旧 PID 或已被其他进程复用：清理，避免阻止后续启动
+        rm -f "${PID_FILE}"
+    fi
+    return 1
+}
+
+start_process() {
+    # 幂等：已在运行则直接成功
+    if status; then
+        log_msg "已在运行，跳过启动"
+        return 0
+    fi
+
+    if [ ! -x "${APP_DIR}/server/qingyi-youzhang" ]; then
+        log_msg "启动失败：未找到后端二进制 ${APP_DIR}/server/qingyi-youzhang"
+        fail_msg "未找到后端程序文件。"
+        return 1
+    fi
+
+    log_msg "Starting process ..."
+    bash -c "${CMD}" >> "${LOG_FILE}" 2>&1 &
+    local pid=$!
+    printf "%s" "${pid}" > "${PID_FILE}"
+
+    # 健康检测：等待并确认后端进程稳定存活。
+    # 后端 bind 失败会立即 log.Fatal 退出，因此进程存活即代表监听正常。
+    sleep 0.5
+    local waited=0
+    while [ "${waited}" -lt 5 ]; do
+        if ! check_process "${pid}"; then
+            log_msg "启动失败：进程已退出，请检查日志中的监听错误"
+            fail_msg "后端进程未能启动。"
+            rm -f "${PID_FILE}"
+            return 1
+        fi
+        sleep 0.5
+        waited=$((waited + 1))
+    done
+
+    log_msg "启动成功，监听网关 Socket ${SOCKET}"
+    return 0
+}
+
+stop_process() {
+    log_msg "Stopping process ..."
+
+    if [ ! -r "${PID_FILE}" ]; then
+        log_msg "无 PID 文件，视为已停止"
+        return 0
+    fi
+
+    local pid
+    pid=$(head -n 1 "${PID_FILE}" 2>/dev/null | tr -d '[:space:]')
+    log_msg "pid=${pid}"
+
+    if ! is_our_process "${pid}"; then
+        rm -f "${PID_FILE}"
+        log_msg "进程不存在或非本应用，清理 PID 文件"
+        rm -f "${SOCKET}" 2>/dev/null || true
+        return 0
+    fi
+
+    log_msg "send TERM signal to PID:${pid}..."
+    kill -TERM "${pid}" >> "${LOG_FILE}" 2>&1
+
+    local count=0
+    while check_process "${pid}" && [ "${count}" -lt 10 ]; do
+        sleep 1
+        count=$((count + 1))
+    done
+
+    if check_process "${pid}"; then
+        log_msg "send KILL signal to PID:${pid}..."
+        kill -KILL "${pid}" 2>/dev/null || true
+        sleep 1
+    fi
+
+    rm -f "${PID_FILE}"
+    # 清理 Socket 文件，避免下次启动残留导致 bind 失败
+    rm -f "${SOCKET}" 2>/dev/null || true
+    return 0
+}
+
+case "$1" in
+start)
+    start_process
+    ;;
+stop)
+    stop_process
+    ;;
+status)
+    if status; then
+        exit 0
+    else
+        exit 3
+    fi
+    ;;
+*)
+    exit 1
+    ;;
+esac

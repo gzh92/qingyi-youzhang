@@ -1,0 +1,15 @@
+[
+  {
+    "stepTitle": "应用设置",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "情谊有账为纯本地应用，经飞牛统一网关访问并复用 NAS 登录态；账本数据保存在本机 home 目录，无额外运行配置项。"
+      },
+      {
+        "type": "tips",
+        "helpText": "应用会创建共享目录「qingyi-youzhang/exports」，用于把账本导出为 Excel 直接存到 NAS，可在文件管理器中查看。"
+      }
+    ]
+  }
+]

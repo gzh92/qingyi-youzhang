@@ -1,0 +1,14 @@
+{
+    ".url": {
+        "qingyi-youzhang.Application": {
+            "title": "情谊有账",
+            "icon": "images/icon_{0}.png",
+            "type": "iframe",
+            "protocol": "",
+            "gatewayPrefix": "/app/qingyi-youzhang",
+            "gatewaySocket": "app.sock",
+            "url": "/app/qingyi-youzhang",
+            "allUsers": true
+        }
+    }
+}
