@@ -1,0 +1,19 @@
+appname=qingyi-youzhang
+version=1.0.7
+display_name=情谊有账
+desc=<b>「情谊有账」</b>是一款部署在飞牛 NAS 上的人情记账小工具，纯本地运行，完全免费，无会员、无广告、无任何付费功能。<br><br><b>它能做什么</b><br>❶ 礼尚往来记账：婚礼、满月、生日、乔迁、升学、白事等各类人情收支，金额、对象、事由、关系一目了然；内置常用事由，也可自定义。<br>❷ 多账本管理：按自家 / 爸妈家 / 个人分开记账，各账本互不干扰，随时切换。<br>❸ 收支分明：收礼（进）与送礼（出）分开，谁家随了多少、该还多少，心里有底；往来明细支持按每页 15 / 30 / 50 / 100 条自定义翻页。<br>❹ 对象通讯录：按亲友查看往来历史，「该回多少」自动算出，结余一眼即知；支持按关键字与待回礼 / 待收礼状态筛选，卡片、表格两种视图随心切换；记多了还会自动联想常联系的亲友。<br>❺ 数据统计与年度报告：收 / 支汇总、分类分布与月度趋势；每年自动生成「年度人情报告」，往来最多的人、最重的一笔一目了然，可一键保存长图分享。<br>❻ 导出到 NAS：一键把账本导出为 Excel，直接存到 NAS 共享目录，文件管理器随时查看。<br>❼ Excel 导入导出：导出 .xlsx 表格（Excel / WPS 直接打开），也能把做好的表格一键合并进账本，方便整理核对。<br>❽ 导出备份：一键导出 JSON 备份文件，换设备不丢账；删除或清空误操作 5 秒内可一键撤销。 <br><br><b>关于支持</b><br>完全免费、无会员、无广告。若它帮你省下一点心，可在「使用帮助 → 想请作者喝杯奶茶」扫码打赏，金额随意。<br><br><b>反馈与建议</b><br>遇到 Bug 或有新功能建议，欢迎到飞牛论坛的应用帖留言：<a href="https://club.fnnas.com/forum.php?mod=viewthread&tid=74841">情谊有账 · 飞牛论坛讨论帖</a>。帖子内同步版本更新，作者会逐条查看。 <br><br><img src="https://club.fnnas.com/data/attachment/forum/202610/17/090722igzv3mubhuwvuuuu.png" width="640" alt="情谊有账 应用界面">
+platform=x86
+source=thirdparty
+
+maintainer=gzh
+maintainer_url=https://github.com/gzh92/
+distributor=gzh
+distributor_url=https://github.com/gzh92/qingyi-youzhang
+
+os_min_version=1.2.0
+
+desktop_uidir=ui
+desktop_applaunchname=qingyi-youzhang.Application
+ctl_stop=true
+checkport=false
+disable_authorization_path=false
